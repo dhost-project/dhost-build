@@ -2,6 +2,6 @@
 
 commands = {
     "python":"pip install -r {}/requirements.txt",
-    "node":"yarn --cwd {} install",
+    "node":"npm build --prefix {} install",
     "go":"gohugo"
 }

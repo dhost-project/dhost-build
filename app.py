@@ -22,4 +22,4 @@ def build():
 
     return jsonify("{}:{}".format(output, version)), 200
 
-app.run()
+app.run(host='0.0.0.0', port=80)
