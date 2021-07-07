@@ -16,7 +16,6 @@ import os
 
 client = boto3.client('s3')
 resource = boto3.resource('s3')
-download_dir(client, resource, 'clientconf/', '/tmp')
 
 def download_dir(bucket_name, dir_name):
     s3_resource = boto3.resource('s3')
