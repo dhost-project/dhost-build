@@ -14,16 +14,43 @@ import boto3
 import os
 
 
-client = boto3.client('s3')
-resource = boto3.resource('s3')
+client = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_KEY")
+)
 
-def download_dir(bucket_name, dir_name):
-    s3_resource = boto3.resource('s3')
-    bucket = s3_resource.Bucket(bucket_name)
-    for obj in bucket.objects.filter(Prefix = dir_name):
-        if not os.path.exists(os.path.dirname(obj.key)):
-            os.makedirs(os.path.dirname(obj.key))
-        bucket.download_file(obj.key, obj.key) # save to same path
+
+def download_dir(prefix, local, bucket, client):
+    keys = []
+    dirs = []
+    next_token = ''
+    base_kwargs = {
+        'Bucket':bucket,
+        'Prefix':prefix,
+    }
+    while next_token is not None:
+        kwargs = base_kwargs.copy()
+        if next_token != '':
+            kwargs.update({'ContinuationToken': next_token})
+        results = client.list_objects_v2(**kwargs)
+        contents = results.get('Contents')
+        for i in contents:
+            k = i.get('Key')
+            if k[-1] != '/':
+                keys.append(k)
+            else:
+                dirs.append(k)
+        next_token = results.get('NextContinuationToken')
+    for d in dirs:
+        dest_pathname = os.path.join(local, d)
+        if not os.path.exists(os.path.dirname(dest_pathname)):
+            os.makedirs(os.path.dirname(dest_pathname))
+    for k in keys:
+        dest_pathname = os.path.join(local, k)
+        if not os.path.exists(os.path.dirname(dest_pathname)):
+            os.makedirs(os.path.dirname(dest_pathname))
+        client.download_file(bucket, k, dest_pathname)
 
 
 
@@ -33,11 +60,11 @@ def build():
     langage = data["langage"]
     version = data["version"]
     path = data["path"]
+    name = data["name"]
 
-    download_dir("d-host", path)
-    process = subprocess.Popen(commands[langage].format(path).split(), stdout=subprocess.PIPE)
+    download_dir(name, path, "d-host", client)
+    process = subprocess.Popen(commands[langage].format(version, path).split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
-
     return jsonify("{}:{}".format(output, version)), 200
 
 app.run(host='0.0.0.0', port=80)
